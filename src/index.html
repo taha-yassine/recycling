@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Camera Web App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #000;
+    }
+    #video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    #captureButton {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 20px;
+      font-size: 24px;
+      background-color: #fff;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    #preview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  </style>
+</head>
+<body>
+  <video id="video" autoplay></video>
+  <button id="captureButton"></button>
+  <canvas id="canvas" style="display: none;"></canvas>
+  <img id="preview" alt="Captured Image" style="display: none;">
+
+  <script>
+    const video = document.getElementById('video');
+    const captureButton = document.getElementById('captureButton');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const preview = document.getElementById('preview');
+
+    const worker = new Worker('worker.js', {
+        type: 'module'
+    });
+
+    // Access the camera
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(function(stream) {
+        video.srcObject = stream;
+      })
+      .catch(function(error) {
+        console.log('Error accessing camera:', error);
+      });
+
+    captureButton.addEventListener('click', function() {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      worker.postMessage(imageData);
+    });
+
+    worker.addEventListener('message', function(event) {
+        switch (event.data.type) {
+          case 'download':
+            console.log('download:', event.data.progress);
+            break;
+          case 'complete':
+            console.log('complete:', event.data.data);
+            break;
+        }
+
+        // const processedImageData = event.data;
+        // ctx.putImageData(processedImageData, 0, 0);
+        // preview.src = canvas.toDataURL();
+
+        // // Hide the camera and show the processed image
+        // video.style.display = 'none';
+        // captureButton.style.display = 'none';
+        // preview.style.display = 'block';
+    });
+  </script>
+</body>
+</html>
